@@ -4,6 +4,7 @@ import { Music, VolumeX } from "lucide-react";
 export default function AmbientAudio() {
   const [on, setOn] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const startedRef = useRef(false);
 
   const start = useCallback(() => {
     if (audioRef.current) return;
@@ -39,6 +40,31 @@ export default function AmbientAudio() {
     }, 40);
   }, []);
 
+  useEffect(() => {
+    const onInteract = () => {
+      if (startedRef.current) return;
+      startedRef.current = true;
+      setOn(true);
+      start();
+      window.removeEventListener("click", onInteract);
+      window.removeEventListener("touchstart", onInteract);
+      window.removeEventListener("scroll", onInteract);
+      window.removeEventListener("keydown", onInteract);
+    };
+    window.addEventListener("click", onInteract);
+    window.addEventListener("touchstart", onInteract);
+    window.addEventListener("scroll", onInteract, { passive: true });
+    window.addEventListener("keydown", onInteract);
+    return () => {
+      window.removeEventListener("click", onInteract);
+      window.removeEventListener("touchstart", onInteract);
+      window.removeEventListener("scroll", onInteract);
+      window.removeEventListener("keydown", onInteract);
+      audioRef.current?.pause();
+      audioRef.current = null;
+    };
+  }, [start]);
+
   const toggle = () => {
     if (on) {
       stop();
@@ -49,16 +75,9 @@ export default function AmbientAudio() {
     }
   };
 
-  useEffect(() => {
-    return () => {
-      audioRef.current?.pause();
-      audioRef.current = null;
-    };
-  }, []);
-
   return (
     <button
-      onClick={toggle}
+      onClick={(e) => { e.stopPropagation(); toggle(); }}
       aria-label={on ? "Mute ambient music" : "Play ambient music"}
       title={on ? "Mute ambient music" : "Play ambient music"}
       className="glass"
