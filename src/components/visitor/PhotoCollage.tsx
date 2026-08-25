@@ -108,10 +108,10 @@ function CarouselCard({
   );
 
   useEffect(() => {
-    if (!isCarousel || reduced || paused || hovered) return;
+    if (!isCarousel || reduced || paused) return;
     const id = setInterval(() => setSlide((s) => (s + 1) % count), 3500);
     return () => clearInterval(id);
-  }, [isCarousel, reduced, paused, hovered, count]);
+  }, [isCarousel, reduced, paused, count]);
 
   const pauseTemporarily = useCallback(() => {
     setPaused(true);
