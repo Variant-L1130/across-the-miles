@@ -31,14 +31,19 @@ export default function EmberField() {
       getComputedStyle(document.documentElement).getPropertyValue("--accent-2").trim() ||
       "#b9a7f5";
 
+    const dpr = () => Math.min(window.devicePixelRatio || 1, 1.5);
+
     const resize = () => {
-      const rect = canvas.parentElement!.getBoundingClientRect();
-      canvas.width = rect.width * Math.min(devicePixelRatio, 1.5);
-      canvas.height = rect.height * Math.min(devicePixelRatio, 1.5);
-      const count = Math.min(70, Math.floor(rect.width / 14));
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      canvas.width = w * dpr();
+      canvas.height = h * dpr();
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      const count = Math.min(70, Math.floor(w / 14));
       particles = Array.from({ length: count }, () => ({
-        x: Math.random() * rect.width,
-        y: rect.height + Math.random() * rect.height,
+        x: Math.random() * w,
+        y: h + Math.random() * h,
         vy: -(0.15 + Math.random() * 0.45),
         vx: (Math.random() - 0.5) * 0.22,
         r: 0.7 + Math.random() * 1.8,
@@ -48,8 +53,8 @@ export default function EmberField() {
     };
 
     const draw = (t: number) => {
-      const w = canvas.width / (Math.min(devicePixelRatio, 1.5));
-      const h = canvas.height / (Math.min(devicePixelRatio, 1.5));
+      const w = canvas.width / dpr();
+      const h = canvas.height / dpr();
       ctx.clearRect(0, 0, w, h);
       for (const p of particles) {
         if (!reduced) {
@@ -95,7 +100,7 @@ export default function EmberField() {
     <canvas
       ref={canvasRef}
       aria-hidden
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+      style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", pointerEvents: "none", zIndex: 0 }}
     />
   );
 }

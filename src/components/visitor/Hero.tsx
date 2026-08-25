@@ -20,14 +20,14 @@ export default function Hero({ config }: { config: ExperienceConfig }) {
   const style = config.hero.style;
   const photo = config.hero.photo;
   const name = config.basics.recipientName;
-  const message = useMemo(
-    () => interpolate(config.basics.heroMessage, {
-      Name: name,
-      Sender: config.basics.senderName,
-      Date: config.basics.birthdayDate
-    }),
-    [config.basics, name]
-  );
+  const vars = useMemo(() => ({
+    Name: name,
+    Sender: config.basics.senderName,
+    Date: config.basics.birthdayDate
+  }), [name, config.basics.senderName, config.basics.birthdayDate]);
+
+  const subtitle = useMemo(() => interpolate(config.basics.subtitle, vars), [config.basics.subtitle, vars]);
+  const message = useMemo(() => interpolate(config.basics.heroMessage, vars), [config.basics.heroMessage, vars]);
 
   const justify = style.align === "center" ? "center" : style.align === "right" ? "flex-end" : "flex-start";
   const vPos = style.textPos === "top" ? "flex-start" : style.textPos === "center" ? "center" : "flex-end";
@@ -119,7 +119,7 @@ export default function Hero({ config }: { config: ExperienceConfig }) {
               className="script"
               style={{ fontSize: "clamp(1.4rem, 3vw, 1.9rem)", color: COLOR_MAP[style.color] === "#fff8ee" ? "var(--accent)" : COLOR_MAP[style.color], opacity: 0.92 }}
             >
-              {config.basics.subtitle}
+              {subtitle}
             </motion.p>
           )}
           {name && (
