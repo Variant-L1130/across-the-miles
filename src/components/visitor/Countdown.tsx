@@ -97,7 +97,7 @@ export default function Countdown({ config }: { config: ExperienceConfig }) {
         padding: "clamp(4rem, 10vh, 7rem) 1.25rem clamp(3rem, 8vh, 5rem)"
       }}
     >
-      <SectionHeading kicker="counting every second" title={<>Until We <em>Celebrate</em></>} />
+      <SectionHeading kicker="until then" title={<>Hope to See You <em>Before</em></>} />
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
