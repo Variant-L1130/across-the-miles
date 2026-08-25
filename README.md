@@ -83,3 +83,4 @@ Every gift photo/video/message then lives on that volume and survives redeploys.
 - Animations respect `prefers-reduced-motion`; canvases pause when the tab is hidden.
 - Ambient generative music is off by default — the small button top-right enables it.
 - Port conflicts: dev web runs on 5173, API on 5178 (both configurable via `PORT`).
+
