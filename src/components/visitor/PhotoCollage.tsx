@@ -1,6 +1,6 @@
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Camera, ChevronLeft, ChevronRight } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import type { CollagePhoto } from "../../lib/types";
 import SectionHeading from "../SectionHeading";
 import Lightbox from "./Lightbox";
@@ -94,7 +94,9 @@ function CarouselCard({
 }) {
   const [slide, setSlide] = useState(0);
   const [hovered, setHovered] = useState(false);
+  const [paused, setPaused] = useState(false);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const pauseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const count = entry.photos.length;
   const isCarousel = count > 1;
 
@@ -104,6 +106,25 @@ function CarouselCard({
     },
     [count]
   );
+
+  useEffect(() => {
+    if (!isCarousel || reduced || paused || hovered) return;
+    const id = setInterval(() => setSlide((s) => (s + 1) % count), 3500);
+    return () => clearInterval(id);
+  }, [isCarousel, reduced, paused, hovered, count]);
+
+  const pauseTemporarily = useCallback(() => {
+    setPaused(true);
+    if (pauseTimer.current) clearTimeout(pauseTimer.current);
+    pauseTimer.current = setTimeout(() => setPaused(false), 12000);
+  }, []);
+
+  useEffect(() => () => { if (pauseTimer.current) clearTimeout(pauseTimer.current); }, []);
+
+  const handleManualNav = useCallback((dir: number) => {
+    step(dir);
+    pauseTemporarily();
+  }, [step, pauseTemporarily]);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -116,10 +137,10 @@ function CarouselCard({
       const dy = e.changedTouches[0].clientY - touchStart.current.y;
       touchStart.current = null;
       if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
-        step(dx > 0 ? -1 : 1);
+        handleManualNav(dx > 0 ? -1 : 1);
       }
     },
-    [step]
+    [handleManualNav]
   );
 
   const content = (
@@ -142,12 +163,15 @@ function CarouselCard({
           ))}
         </div>
       )}
+      {isCarousel && (
+        <span className="carousel-count">{count}</span>
+      )}
       {isCarousel && !reduced && (
         <>
           <button
             className="carousel-arrow carousel-arrow-left"
             aria-label="Previous photo"
-            onClick={(e) => { e.stopPropagation(); step(-1); }}
+            onClick={(e) => { e.stopPropagation(); handleManualNav(-1); }}
             style={{ opacity: hovered ? 1 : 0 }}
           >
             <ChevronLeft size={16} />
@@ -155,10 +179,18 @@ function CarouselCard({
           <button
             className="carousel-arrow carousel-arrow-right"
             aria-label="Next photo"
-            onClick={(e) => { e.stopPropagation(); step(1); }}
+            onClick={(e) => { e.stopPropagation(); handleManualNav(1); }}
             style={{ opacity: hovered ? 1 : 0 }}
           >
             <ChevronRight size={16} />
+          </button>
+          <button
+            className="carousel-pause"
+            aria-label={paused ? "Resume slideshow" : "Pause slideshow"}
+            onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
+            style={{ opacity: hovered ? 1 : 0 }}
+          >
+            {paused ? <Play size={12} /> : <Pause size={12} />}
           </button>
         </>
       )}

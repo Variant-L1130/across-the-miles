@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Camera, ChevronDown, ChevronUp, Images, Link, Shuffle, Trash2, Unlink } from "lucide-react";
 import type { ExperienceConfig } from "../../lib/types";
 import { uid } from "../../lib/config";
 import { deleteMedia, processImage, uploadMedia } from "../../lib/media";
-import DropZone from "./DropZone";
 
 export default function PhotosStep({
   config,
@@ -15,6 +14,8 @@ export default function PhotosStep({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const singleRef = useRef<HTMLInputElement>(null);
+  const multiRef = useRef<HTMLInputElement>(null);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -54,11 +55,11 @@ export default function PhotosStep({
     clearSelection();
   };
 
-  const addPhotos = async (files: File[]) => {
+  const uploadOne = async (files: File[]) => {
     setError("");
     setBusy(true);
     try {
-      for (const file of files.slice(0, 40)) {
+      for (const file of files) {
         if (!file.type.startsWith("image/")) continue;
         const processed = await processImage(file);
         const [url, thumb] = await Promise.all([
@@ -77,6 +78,34 @@ export default function PhotosStep({
     }
   };
 
+  const uploadMultiple = async (files: File[]) => {
+    const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+    if (imageFiles.length < 2) {
+      setError("Select 2+ photos to create a carousel memory");
+      return;
+    }
+    setError("");
+    setBusy(true);
+    const carouselId = uid();
+    try {
+      for (const file of imageFiles.slice(0, 40)) {
+        const processed = await processImage(file);
+        const [url, thumb] = await Promise.all([
+          uploadMedia(processed.full, `photo-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`, "image"),
+          uploadMedia(processed.thumb, `thumb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.jpg`, "image")
+        ]);
+        const rot = Math.round((Math.random() * 12 - 6) * 10) / 10;
+        update((d) => {
+          d.photos.push({ id: uid(), url, thumb, caption: "", rot, carouselId });
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Some photos failed to upload");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const groupLabels = new Map<string, number>();
   for (const p of config.photos) {
     if (p.carouselId) {
@@ -86,16 +115,68 @@ export default function PhotosStep({
 
   return (
     <div>
-      <DropZone
-        multiple
-        accept="image/*"
-        onFiles={addPhotos}
-        busy={busy}
-        icon={<Camera size={28} color="var(--accent)" />}
-        label={`Add memorable photos${config.photos.length ? ` (${config.photos.length} so far)` : ""}`}
-        sub="they become a floating polaroid collage — drag & drop or click"
-      />
+      <input ref={singleRef} type="file" accept="image/*" multiple={false} hidden onChange={(e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length) uploadOne(files);
+        e.target.value = "";
+      }} />
+      <input ref={multiRef} type="file" accept="image/*" multiple hidden onChange={(e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length) uploadMultiple(files);
+        e.target.value = "";
+      }} />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: "0.8rem", marginBottom: "1rem" }}>
+        <button
+          type="button"
+          className="glass"
+          disabled={busy}
+          onClick={() => singleRef.current?.click()}
+          style={{
+            padding: "1.6rem 1rem",
+            borderStyle: "dashed",
+            borderColor: "var(--line)",
+            background: "rgba(255,255,255,0.03)",
+            cursor: busy ? "not-allowed" : "pointer",
+            textAlign: "center",
+            color: "inherit",
+            opacity: busy ? 0.5 : 1
+          }}
+        >
+          <Camera size={26} color="var(--accent)" style={{ margin: "0 auto 0.5rem" }} />
+          <div style={{ fontSize: "0.92rem", fontWeight: 500 }}>Add One Photo</div>
+          <div style={{ fontSize: "0.74rem", color: "var(--faint)", marginTop: "0.3rem" }}>uploads a single memory</div>
+        </button>
+        <button
+          type="button"
+          className="glass"
+          disabled={busy}
+          onClick={() => multiRef.current?.click()}
+          style={{
+            padding: "1.6rem 1rem",
+            borderStyle: "dashed",
+            borderColor: "var(--line)",
+            background: "rgba(255,255,255,0.03)",
+            cursor: busy ? "not-allowed" : "pointer",
+            textAlign: "center",
+            color: "inherit",
+            opacity: busy ? 0.5 : 1
+          }}
+        >
+          <Images size={26} color="var(--accent)" style={{ margin: "0 auto 0.5rem" }} />
+          <div style={{ fontSize: "0.92rem", fontWeight: 500 }}>Add Multiple Photos</div>
+          <div style={{ fontSize: "0.74rem", color: "var(--faint)", marginTop: "0.3rem" }}>auto-groups into a swipeable carousel</div>
+        </button>
+      </div>
+
+      {busy && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", padding: "0.8rem", color: "var(--accent)", fontSize: "0.85rem" }}>
+          <span className="spin" style={{ display: "inline-block", width: 16, height: 16, border: "2px solid var(--accent)", borderTopColor: "transparent", borderRadius: "50%" }} />
+          Uploading…
+        </div>
+      )}
       {error && <p style={{ color: "#ff9c9c", fontSize: "0.85rem", marginTop: "0.7rem" }}>{error}</p>}
+
       {config.photos.length > 0 && (
         <>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", margin: "0.9rem 0", flexWrap: "wrap", alignItems: "center" }}>
@@ -207,7 +288,7 @@ export default function PhotosStep({
         </>
       )}
       <p style={{ fontSize: "0.78rem", color: "var(--faint)", marginTop: "1rem" }}>
-        Select 2+ photos and click Group to combine them into a swipeable carousel. Order changes how they drift into the collage.
+        Upload Multiple Photos to create a swipeable carousel. Select 2+ existing photos and click Group to combine them. Drag to reorder.
       </p>
     </div>
   );
