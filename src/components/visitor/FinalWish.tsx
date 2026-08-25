@@ -1,7 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef } from "react";
 import confetti from "canvas-confetti";
-import EmberField from "../EmberField";
 import type { ExperienceConfig } from "../../lib/types";
 import { interpolate } from "../../lib/config";
 
@@ -68,7 +67,6 @@ export default function FinalWish({ config }: { config: ExperienceConfig }) {
         padding: "clamp(7rem, 20vh, 13rem) 1.5rem"
       }}
     >
-      <EmberField />
       <div style={{ position: "relative", maxWidth: "50rem", margin: "0 auto", textAlign: "center" }}>
         <motion.p
           initial={{ opacity: 0, y: 24 }}
