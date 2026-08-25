@@ -108,10 +108,10 @@ function CarouselCard({
   );
 
   useEffect(() => {
-    if (!isCarousel || reduced || paused) return;
+    if (!isCarousel || paused) return;
     const id = setInterval(() => setSlide((s) => (s + 1) % count), 3500);
     return () => clearInterval(id);
-  }, [isCarousel, reduced, paused, count]);
+  }, [isCarousel, paused, count]);
 
   const pauseTemporarily = useCallback(() => {
     setPaused(true);
@@ -166,29 +166,33 @@ function CarouselCard({
       {isCarousel && (
         <span className="carousel-count">{count}</span>
       )}
-      {isCarousel && !reduced && (
+      {isCarousel && (
         <>
-          <button
-            className="carousel-arrow carousel-arrow-left"
-            aria-label="Previous photo"
-            onClick={(e) => { e.stopPropagation(); handleManualNav(-1); }}
-            style={{ opacity: hovered ? 1 : 0 }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            className="carousel-arrow carousel-arrow-right"
-            aria-label="Next photo"
-            onClick={(e) => { e.stopPropagation(); handleManualNav(1); }}
-            style={{ opacity: hovered ? 1 : 0 }}
-          >
-            <ChevronRight size={16} />
-          </button>
+          {!reduced && (
+            <>
+              <button
+                className="carousel-arrow carousel-arrow-left"
+                aria-label="Previous photo"
+                onClick={(e) => { e.stopPropagation(); handleManualNav(-1); }}
+                style={{ opacity: hovered ? 1 : 0 }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                className="carousel-arrow carousel-arrow-right"
+                aria-label="Next photo"
+                onClick={(e) => { e.stopPropagation(); handleManualNav(1); }}
+                style={{ opacity: hovered ? 1 : 0 }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </>
+          )}
           <button
             className="carousel-pause"
             aria-label={paused ? "Resume slideshow" : "Pause slideshow"}
             onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
-            style={{ opacity: hovered ? 1 : 0 }}
+            style={{ opacity: reduced ? 1 : (hovered ? 1 : 0) }}
           >
             {paused ? <Play size={12} /> : <Pause size={12} />}
           </button>
