@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, ChevronDown, ChevronUp, Shuffle, Trash2 } from "lucide-react";
+import { Camera, ChevronDown, ChevronUp, Images, Link, Shuffle, Trash2, Unlink } from "lucide-react";
 import type { ExperienceConfig } from "../../lib/types";
 import { uid } from "../../lib/config";
 import { deleteMedia, processImage, uploadMedia } from "../../lib/media";
@@ -14,6 +14,45 @@ export default function PhotosStep({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const groupSelected = () => {
+    const ids = [...selected];
+    if (ids.length < 2) return;
+    const newGroupId = uid();
+    update((d) => {
+      for (const photo of d.photos) {
+        if (ids.includes(photo.id)) {
+          photo.carouselId = newGroupId;
+        }
+      }
+    });
+    clearSelection();
+  };
+
+  const ungroupSelected = () => {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    update((d) => {
+      for (const photo of d.photos) {
+        if (ids.includes(photo.id)) {
+          delete photo.carouselId;
+        }
+      }
+    });
+    clearSelection();
+  };
 
   const addPhotos = async (files: File[]) => {
     setError("");
@@ -38,6 +77,13 @@ export default function PhotosStep({
     }
   };
 
+  const groupLabels = new Map<string, number>();
+  for (const p of config.photos) {
+    if (p.carouselId) {
+      if (!groupLabels.has(p.carouselId)) groupLabels.set(p.carouselId, groupLabels.size + 1);
+    }
+  }
+
   return (
     <div>
       <DropZone
@@ -52,7 +98,20 @@ export default function PhotosStep({
       {error && <p style={{ color: "#ff9c9c", fontSize: "0.85rem", marginTop: "0.7rem" }}>{error}</p>}
       {config.photos.length > 0 && (
         <>
-          <div style={{ display: "flex", justifyContent: "flex-end", margin: "0.9rem 0" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", margin: "0.9rem 0", flexWrap: "wrap", alignItems: "center" }}>
+            {selected.size > 0 && (
+              <div style={{ display: "flex", gap: "0.4rem", marginRight: "auto" }}>
+                <button className="btn btn-primary" onClick={groupSelected} disabled={selected.size < 2}>
+                  <Link size={14} /> Group selected ({selected.size})
+                </button>
+                <button className="btn" onClick={ungroupSelected}>
+                  <Unlink size={14} /> Ungroup
+                </button>
+                <button className="btn" onClick={clearSelection}>
+                  Clear
+                </button>
+              </div>
+            )}
             <button
               className="btn"
               onClick={() =>
@@ -68,7 +127,32 @@ export default function PhotosStep({
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 250px), 1fr))", gap: "1rem" }}>
             {config.photos.map((p, i) => (
-              <div key={p.id} className="glass" style={{ padding: "0.7rem" }}>
+              <div
+                key={p.id}
+                className="glass"
+                style={{
+                  padding: "0.7rem",
+                  borderColor: selected.has(p.id) ? "var(--accent)" : undefined,
+                  outline: selected.has(p.id) ? "2px solid var(--accent)" : undefined,
+                  outlineOffset: "-1px"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", padding: "0.2rem 0", fontSize: "0.78rem", color: "var(--muted)" }}>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.id)}
+                      onChange={() => toggleSelect(p.id)}
+                      style={{ accentColor: "var(--accent)", width: 15, height: 15 }}
+                    />
+                    Select
+                  </label>
+                  {p.carouselId && (
+                    <span className="carousel-badge">
+                      <Images size={11} /> Carousel {groupLabels.get(p.carouselId)}
+                    </span>
+                  )}
+                </div>
                 <img
                   src={p.thumb}
                   alt=""
@@ -109,7 +193,8 @@ export default function PhotosStep({
                       await deleteMedia(p.url);
                       await deleteMedia(p.thumb);
                       update((d) => {
-                        d.photos.splice(i, 1);
+                        const idx = d.photos.findIndex((x) => x.id === p.id);
+                        if (idx !== -1) d.photos.splice(idx, 1);
                       });
                     }}
                   >
@@ -122,7 +207,7 @@ export default function PhotosStep({
         </>
       )}
       <p style={{ fontSize: "0.78rem", color: "var(--faint)", marginTop: "1rem" }}>
-        Order changes how they drift into the collage; captions appear on the polaroid frames.
+        Select 2+ photos and click Group to combine them into a swipeable carousel. Order changes how they drift into the collage.
       </p>
     </div>
   );

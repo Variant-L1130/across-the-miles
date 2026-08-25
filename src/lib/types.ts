@@ -38,6 +38,7 @@ export interface CollagePhoto {
   thumb: string;
   caption: string;
   rot: number;
+  carouselId?: string;
 }
 
 export interface VideoItem {

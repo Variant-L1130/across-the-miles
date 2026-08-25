@@ -1,6 +1,6 @@
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Camera, ChevronLeft, ChevronRight } from "lucide-react";
 import type { CollagePhoto } from "../../lib/types";
 import SectionHeading from "../SectionHeading";
 import Lightbox from "./Lightbox";
@@ -53,8 +53,146 @@ function buildSlots(count: number): Slot[] {
   return slots;
 }
 
+interface CollageEntry {
+  id: string;
+  photos: CollagePhoto[];
+}
+
+function buildEntries(photos: CollagePhoto[]): CollageEntry[] {
+  const groupMap = new Map<string, CollagePhoto[]>();
+  const groupOrder: string[] = [];
+
+  for (const p of photos) {
+    const gid = p.carouselId;
+    if (gid) {
+      if (!groupMap.has(gid)) {
+        groupOrder.push(gid);
+        groupMap.set(gid, []);
+      }
+      groupMap.get(gid)!.push(p);
+    } else {
+      groupMap.set(p.id, [p]);
+      groupOrder.push(p.id);
+    }
+  }
+
+  return groupOrder.map((id) => ({ id, photos: groupMap.get(id)! }));
+}
+
+function CarouselCard({
+  entry,
+  rot,
+  onOpen,
+  reduced,
+  scrollTransform
+}: {
+  entry: CollageEntry;
+  rot: number;
+  onOpen: (slideIndex: number) => void;
+  reduced: boolean;
+  scrollTransform?: any;
+}) {
+  const [slide, setSlide] = useState(0);
+  const [hovered, setHovered] = useState(false);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const count = entry.photos.length;
+  const isCarousel = count > 1;
+
+  const step = useCallback(
+    (dir: number) => {
+      setSlide((s) => (s + dir + count) % count);
+    },
+    [count]
+  );
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+
+  const onTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (!touchStart.current) return;
+      const dx = e.changedTouches[0].clientX - touchStart.current.x;
+      const dy = e.changedTouches[0].clientY - touchStart.current.y;
+      touchStart.current = null;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
+        step(dx > 0 ? -1 : 1);
+      }
+    },
+    [step]
+  );
+
+  const content = (
+    <div className="carousel-viewport">
+      <div
+        className="carousel-track"
+        style={{
+          transform: `translateX(-${slide * 100}%)`,
+          transition: reduced ? "none" : undefined
+        }}
+      >
+        {entry.photos.map((p) => (
+          <img key={p.id} src={p.thumb} alt={p.caption || ""} loading="lazy" />
+        ))}
+      </div>
+      {isCarousel && (
+        <div className="carousel-dots">
+          {entry.photos.map((_, i) => (
+            <span key={i} className={`carousel-dot ${i === slide ? "active" : ""}`} />
+          ))}
+        </div>
+      )}
+      {isCarousel && !reduced && (
+        <>
+          <button
+            className="carousel-arrow carousel-arrow-left"
+            aria-label="Previous photo"
+            onClick={(e) => { e.stopPropagation(); step(-1); }}
+            style={{ opacity: hovered ? 1 : 0 }}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            className="carousel-arrow carousel-arrow-right"
+            aria-label="Next photo"
+            onClick={(e) => { e.stopPropagation(); step(1); }}
+            style={{ opacity: hovered ? 1 : 0 }}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  const p = entry.photos[0];
+
+  return (
+    <motion.button
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      onClick={() => onOpen(slide)}
+      className="polaroid"
+      style={{ position: "relative" }}
+    >
+      <motion.span
+        style={{
+          display: "block",
+          ...(reduced ? {} : scrollTransform ? { translateY: scrollTransform } : {})
+        }}
+      >
+        {content}
+        {p.caption && <span className="polaroid-caption">{p.caption}</span>}
+      </motion.span>
+    </motion.button>
+  );
+}
+
 export default function PhotoCollage({ photos }: { photos: CollagePhoto[] }) {
-  const [lightbox, setLightbox] = useState<number | null>(null);
+  const [lightboxEntryIdx, setLightboxEntryIdx] = useState<number | null>(null);
+  const [lightboxSlide, setLightboxSlide] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
   const { scrollYProgress } = useScroll({
@@ -64,10 +202,18 @@ export default function PhotoCollage({ photos }: { photos: CollagePhoto[] }) {
   const yFar = useTransform(scrollYProgress, [0, 1], [50, -50]);
   const yNear = useTransform(scrollYProgress, [0, 1], [110, -110]);
 
-  const slots = useMemo(() => buildSlots(photos.length), [photos]);
-  if (photos.length === 0) return null;
+  const entries = useMemo(() => buildEntries(photos), [photos]);
+  const slots = useMemo(() => buildSlots(entries.length), [entries]);
+  if (entries.length === 0) return null;
 
   const isDesktop = useIsDesktop();
+
+  const lightboxPhotos = lightboxEntryIdx !== null ? entries[lightboxEntryIdx].photos : [];
+
+  const openLightbox = (entryIdx: number, slideIdx: number) => {
+    setLightboxEntryIdx(entryIdx);
+    setLightboxSlide(slideIdx);
+  };
 
   if (!isDesktop || reduced) {
     return (
@@ -82,29 +228,25 @@ export default function PhotoCollage({ photos }: { photos: CollagePhoto[] }) {
             marginInline: "auto"
           }}
         >
-          {photos.map((p, i) => (
-            <motion.button
-              key={p.id}
+          {entries.map((entry, i) => (
+            <motion.div
+              key={entry.id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-8% 0px" }}
               transition={{ duration: 0.7, delay: (i % 4) * 0.08 }}
-              onClick={() => setLightbox(i)}
-              className="polaroid"
-              style={{
-                display: "block",
-                width: "100%",
-                marginBottom: "1.1rem",
-                border: "none",
-                transform: `rotate(${p.rot * 0.6}deg)`
-              }}
+              style={{ marginBottom: "1.1rem" }}
             >
-              <img src={p.thumb} alt={p.caption || ""} loading="lazy" style={{ aspectRatio: "auto" }} />
-              {p.caption && <span className="polaroid-caption">{p.caption}</span>}
-            </motion.button>
+              <CarouselCard
+                entry={entry}
+                rot={entry.photos[0].rot * 0.6}
+                onOpen={(s) => openLightbox(i, s)}
+                reduced
+              />
+            </motion.div>
           ))}
         </div>
-        <Lightbox photos={photos} index={lightbox} onClose={() => setLightbox(null)} onNavigate={setLightbox} />
+        <Lightbox photos={lightboxPhotos} index={lightboxEntryIdx !== null ? lightboxSlide : null} onClose={() => setLightboxEntryIdx(null)} onNavigate={setLightboxSlide} />
       </section>
     );
   }
@@ -117,25 +259,24 @@ export default function PhotoCollage({ photos }: { photos: CollagePhoto[] }) {
       <div
         style={{
           position: "relative",
-          height: `${Math.max(46, Math.ceil(photos.length / 3) * 24)}rem`,
+          height: `${Math.max(46, Math.ceil(entries.length / 3) * 24)}rem`,
           maxWidth: "72rem",
           margin: "2.5rem auto 0"
         }}
       >
         <div aria-hidden className="light-leak" style={{ top: "-4%", left: "8%", width: 260, height: 260, background: "var(--accent-soft)", opacity: 0.35 }} />
         <div aria-hidden className="light-leak" style={{ bottom: "6%", right: "5%", width: 320, height: 320, background: "rgba(255,255,255,0.06)" }} />
-        {photos.map((p, i) => {
+        {entries.map((entry, i) => {
           const s = slots[i];
+          const p = entry.photos[0];
           return (
-            <motion.button
-              key={p.id}
+            <motion.div
+              key={entry.id}
               initial={{ opacity: 0, y: 60, rotate: s.rot * 2 }}
               whileInView={{ opacity: 1, y: 0, rotate: s.rot }}
               viewport={{ once: true, margin: "-6% 0px" }}
               transition={{ duration: 0.9, delay: (i % 3) * 0.12, ease: [0.22, 1, 0.36, 1] }}
               whileHover={{ scale: 1.05, rotate: s.rot * 0.4, zIndex: 20 }}
-              onClick={() => setLightbox(i)}
-              className="polaroid"
               style={{
                 position: "absolute",
                 left: `${s.x}%`,
@@ -143,19 +284,21 @@ export default function PhotoCollage({ photos }: { photos: CollagePhoto[] }) {
                 width: `${s.w}px`,
                 marginLeft: `${-s.w / 2}px`,
                 zIndex: Math.round(s.depth * 10),
-                border: "none",
-                cursor: "pointer",
                 boxShadow: `0 ${18 + s.depth * 26}px ${40 + s.depth * 30}px -14px rgba(0,0,0,${0.45 + s.depth * 0.2})`
               }}
             >
               <motion.span style={{ display: "block", ...(reduced ? {} : { translateY: s.depth > 0.65 ? yNear : yFar }) }}>
-                <img src={p.thumb} alt={p.caption || ""} loading="lazy" style={{ aspectRatio: "auto" }} />
-                {p.caption && <span className="polaroid-caption">{p.caption}</span>}
+                <CarouselCard
+                  entry={entry}
+                  rot={s.rot}
+                  onOpen={(sl) => openLightbox(i, sl)}
+                  reduced={false}
+                />
               </motion.span>
-            </motion.button>
+            </motion.div>
           );
         })}
-        {photos.length > 0 && (
+        {entries.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -181,7 +324,7 @@ export default function PhotoCollage({ photos }: { photos: CollagePhoto[] }) {
           </motion.div>
         )}
       </div>
-      <Lightbox photos={photos} index={lightbox} onClose={() => setLightbox(null)} onNavigate={setLightbox} />
+      <Lightbox photos={lightboxPhotos} index={lightboxEntryIdx !== null ? lightboxSlide : null} onClose={() => setLightboxEntryIdx(null)} onNavigate={setLightboxSlide} />
     </section>
   );
 }
