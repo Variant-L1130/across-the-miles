@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { HeartHandshake } from "lucide-react";
 import type { LetterCard } from "../../lib/types";
 import SectionHeading from "../SectionHeading";
@@ -13,13 +12,8 @@ export default function MemoryLetters({ letters }: { letters: LetterCard[] }) {
         <SectionHeading kicker="words kept safe" title={<>Letters I Never <em>Sent</em></>} />
         <div style={{ marginTop: "3rem", display: "grid", gap: "1.2rem", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 19rem), 1fr))" }}>
           {valid.map((l, i) => (
-            <motion.article
+            <article
               key={l.id}
-              initial={{ opacity: 0, y: 40, rotate: i % 2 ? 1.5 : -1.5 }}
-              whileInView={{ opacity: 1, y: 0, rotate: i % 2 ? 0.6 : -0.6 }}
-              viewport={{ once: true, margin: "-8% 0px" }}
-              transition={{ duration: 0.8, delay: (i % 3) * 0.1, ease: [0.22, 1, 0.36, 1] }}
-              whileHover={{ rotate: 0, y: -6 }}
               className="glass"
               style={{ padding: "1.7rem 1.6rem", position: "relative", overflow: "hidden" }}
             >
@@ -45,7 +39,7 @@ export default function MemoryLetters({ letters }: { letters: LetterCard[] }) {
               <p style={{ marginTop: l.title ? "0.6rem" : "0.9rem", color: "var(--muted)", fontSize: "0.95rem", whiteSpace: "pre-wrap" }}>
                 {l.body}
               </p>
-            </motion.article>
+            </article>
           ))}
         </div>
       </div>
