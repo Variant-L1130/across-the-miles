@@ -89,5 +89,8 @@ export interface ExperienceConfig {
     headline: string;
     message: string;
   };
+  review: {
+    photo: HeroPhoto | null;
+  };
   countdownTarget: string;
 }
