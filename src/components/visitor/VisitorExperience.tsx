@@ -10,7 +10,6 @@ import VideoSlideshow from "./VideoSlideshow";
 import VideoScrollStory from "./VideoScrollStory";
 import MemoryLetters from "./MemoryLetters";
 import FinalWish from "./FinalWish";
-import ReviewSection from "./ReviewSection";
 import Countdown from "./Countdown";
 
 function ScrollProgress() {
@@ -42,7 +41,6 @@ const NAV = [
   { id: "videos", label: "Moving moments" },
   { id: "letters", label: "Letters" },
   { id: "finale", label: "The wish" },
-  { id: "review", label: "A memory" },
   { id: "countdown", label: "Countdown" }
 ];
 
@@ -140,7 +138,6 @@ export default function VisitorExperience({ config }: { config: ExperienceConfig
         )}
         <MemoryLetters letters={config.letters} />
         <FinalWish config={config} />
-        <ReviewSection config={config} />
         <Countdown config={config} />
       </div>
     </>

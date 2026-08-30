@@ -13,7 +13,6 @@ import {
   Globe2,
   Heart,
   Image as ImageIcon,
-  ImagePlus,
   Lock,
   Mail,
   PartyPopper,
@@ -31,7 +30,6 @@ import CityPicker from "./CityPicker";
 import LivePreview from "./LivePreview";
 import HeroStep from "./HeroStep";
 import PhotosStep from "./PhotosStep";
-import ReviewPhotoStep from "./ReviewPhotoStep";
 import VideosStep from "./VideosStep";
 import { Card, Field, TextArea, TextField } from "./fields";
 
@@ -44,7 +42,6 @@ const STEPS = [
   { id: "videos", label: "Video Memories", icon: <Film size={15} /> },
   { id: "letters", label: "Little Letters", icon: <PenLine size={15} /> },
   { id: "finale", label: "Finale & Countdown", icon: <CalendarDays size={15} /> },
-  { id: "reviewphoto", label: "Review Photo", icon: <ImagePlus size={15} /> },
   { id: "review", label: "Review & Lock", icon: <Lock size={15} /> }
 ];
 
@@ -544,11 +541,6 @@ export default function AdminApp({ goHome }: { goHome: () => void }) {
               {current.id === "finale" && (
                 <StepShell title="The last word & the wait" desc="Your final wish, and the exact second the celebration begins.">
                   <FinaleStep config={config} update={update} />
-                </StepShell>
-              )}
-              {current.id === "reviewphoto" && (
-                <StepShell title="A closing photo" desc="One image to round off the journey — a single framed memory at the end.">
-                  <ReviewPhotoStep config={config} update={update} />
                 </StepShell>
               )}
               {current.id === "review" && (

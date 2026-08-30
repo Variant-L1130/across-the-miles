@@ -56,9 +56,6 @@ export function defaultConfig(): ExperienceConfig {
       message:
         "Wherever life takes you, I hope you always remember how deeply you are loved."
     },
-    review: {
-      photo: null
-    },
     countdownTarget: ""
   };
 }
@@ -92,9 +89,6 @@ export function deepMergeConfig(saved: unknown): ExperienceConfig {
     letters: Array.isArray(s.letters)
       ? s.letters.filter((l: any) => l && typeof l === "object")
       : [],
-    finale: { ...base.finale, ...(s.finale || {}) },
-    review: {
-      photo: s.review?.photo ?? null
-    }
+    finale: { ...base.finale, ...(s.finale || {}) }
   } as ExperienceConfig;
 }
